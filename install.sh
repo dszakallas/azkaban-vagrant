@@ -1,8 +1,9 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 set -ex -o pipefail
 
 kube_version=1.24.4-00
+flux_version=0.33.0
 
 usage_error () { echo >&2 "$(basename $0):  $1"; exit 2; }
 
@@ -28,6 +29,54 @@ EOF
     apt-get update
     apt-get install -y kubeadm=${kube_version} kubelet=${kube_version} kubectl=${kube_version}
     apt-mark hold kubelet kubeadm kubectl
+}
+
+install_fluxcd () {
+    FLUX_VERSION=${flux_version} curl -s https://fluxcd.io/install.sh | sudo bash
+}
+
+boot_fluxcd () {
+    local remote=$1
+    local env=$2
+    local privkey_file=$3
+    flux install --namespace=flux-system \
+                 --components=source-controller,kustomize-controller,helm-controller,notification-controller \
+                 --cluster-domain=azkaban
+
+    flux create secret git flux-system \
+         --url=$remote \
+         --private-key-file=$privkey_file
+
+    cat > gotk-sync.yaml <<EOF
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: GitRepository
+metadata:
+  name: flux-origin
+  namespace: flux-system
+spec:
+  interval: 1m0s
+  ref:
+    branch: main
+  secretRef:
+    name: flux-system
+  url: ${remote}
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+kind: Kustomization
+metadata:
+  name: flux-origin
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  path: ./clusters/${env}
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-origin
+EOF
+    kubectl apply -f gotk-sync.yaml
+
 }
 
 init_cp () {
@@ -110,6 +159,8 @@ op=$1; shift
 
 case $op in
     install_k8s) install_k8s;;
+    install_fluxcd) install_fluxcd;;
+    boot_fluxcd) boot_fluxcd $@ ;;
     init_cp) init_cp $@ ;;
     join_worker) join_worker $@ ;;
     *)  usage_error "unknown operation '${op}'";;

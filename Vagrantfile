@@ -35,7 +35,7 @@ Vagrant.configure("2") do |config|
   # For a complete reference, please see the online documentation at
   # https://docs.vagrantup.com.
 
-  config.vm.define "cp" do |node|
+  config.vm.define "cp", primary: true do |node|
     node.vm.box = "ubuntu/focal64"
 
     hostname = "#{$cp_hostname}-01"
@@ -55,6 +55,7 @@ Vagrant.configure("2") do |config|
     node.vm.provision "shell", inline: $move_certs_script
     node.vm.provision "shell", path: "install.sh",
                       args: ["init_cp", $cp_ip, $cp_hostname, $cp_ip, hostname, $podnet_cidr, $svcnet_cidr, $svcnet_dns_ip, $bootstrap_token]
+    node.vm.provision "shell", inline: "cp -r /root/.kube /home/vagrant/.kube && chown vagrant -R /home/vagrant/.kube"
   end
 
   (1..2).each do |i|
@@ -75,6 +76,10 @@ Vagrant.configure("2") do |config|
       node.vm.provision "shell", path: "install.sh",
                         args: ["join_worker", $cp_ip, $cp_hostname, node_ip, $bootstrap_token, $discovery_ca_hash]
     end
+  end
+
+  config.vm.define "cp", primary: true do |node|
+
   end
 
   # Disable automatic box update checking. If you disable this, then
