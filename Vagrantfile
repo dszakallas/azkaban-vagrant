@@ -18,7 +18,7 @@ $discovery_ca_hash_cmd =
     ' | openssl dgst -sha256 -hex' +
     ' | sed \'s/^.* //\''
 
-$cp_ip = "192.168.58.3"
+$cp_ip = "192.168.57.3"
 $cp_hostname = "azkaban-cp"
 $podnet_cidr = "172.16.0.0/16"
 $svcnet_cidr = "172.17.0.0/16"
@@ -63,7 +63,7 @@ Vagrant.configure("2") do |config|
       node.vm.box = "ubuntu/focal64"
 
       hostname = "azkaban-worker-%02d" % i
-      node_ip = "192.168.58.%d" % (10 + i)
+      node_ip = "192.168.57.%d" % (10 + i)
 
       node.vm.provider "virtualbox" do |vb|
         vb.memory = "1024"
