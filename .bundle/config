@@ -1,0 +1,2 @@
+---
+BUNDLE_BUILD__GRPC: "--with-ldflags=-Wl,-undefined,dynamic_lookup"

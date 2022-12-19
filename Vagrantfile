@@ -36,47 +36,57 @@ Vagrant.configure("2") do |config|
   # https://docs.vagrantup.com.
 
   config.vm.define "cp", primary: true do |node|
-    node.vm.box = "ubuntu/focal64"
+    node.vm.box = "generic/ubuntu2004"
 
     hostname = "#{$cp_hostname}-01"
 
-    node.vm.provider "virtualbox" do |vb|
-      vb.memory = "2048"
-      vb.name = "v-#{hostname}"
+    node.vm.provider "libvirt" do |lv|
+      lv.features = ['acpi',  'gic version=\'3\'']
+      lv.driver = "qemu"
+      lv.machine_type = "virt-6.0"
+      lv.memory = "2048"
+      lv.nvram = "/var/lib/libvirt/qemu/nvram/vagrant.fd"
+      lv.loader = "/usr/share/edk2/aarch64/QEMU_EFI-silent-pflash.raw"
+      lv.qemuargs :value => '-machine'
+      lv.qemuargs :value => 'virt,accel=hvf,highmem=off'
+      lv.inputs = []  # Force NO default PS/2 mouse
+      lv.input :type => "tablet", :bus => "usb"
+      lv.input :type => "keyboard", :bus => "usb"
+      lv.usb_controller :model => "nec-xhci"
     end
 
     node.vm.hostname = hostname
 
-    node.vm.network "private_network", ip: $cp_ip, name: "vboxnet1"
+    # node.vm.network "private_network", ip: $cp_ip, name: "vboxnet1"
 
-    node.vm.provision "shell", path: "install.sh", args: ["install_k8s"]
-    node.vm.provision "file", source: "pki/ca.crt", destination: "ca.crt"
-    node.vm.provision "file", source: "pki/ca.key", destination: "ca.key"
-    node.vm.provision "shell", inline: $move_certs_script
-    node.vm.provision "shell", path: "install.sh",
-                      args: ["init_cp", $cp_ip, $cp_hostname, $cp_ip, hostname, $podnet_cidr, $svcnet_cidr, $svcnet_dns_ip, $bootstrap_token]
-    node.vm.provision "shell", inline: "cp -r /root/.kube /home/vagrant/.kube && chown vagrant -R /home/vagrant/.kube"
+    # node.vm.provision "shell", path: "install.sh", args: ["install_k8s"]
+    # node.vm.provision "file", source: "pki/ca.crt", destination: "ca.crt"
+    # node.vm.provision "file", source: "pki/ca.key", destination: "ca.key"
+    # node.vm.provision "shell", inline: $move_certs_script
+    # node.vm.provision "shell", path: "install.sh",
+    #                   args: ["init_cp", $cp_ip, $cp_hostname, $cp_ip, hostname, $podnet_cidr, $svcnet_cidr, $svcnet_dns_ip, $bootstrap_token]
+    # node.vm.provision "shell", inline: "cp -r /root/.kube /home/vagrant/.kube && chown vagrant -R /home/vagrant/.kube"
   end
 
-  (1..2).each do |i|
-    config.vm.define "worker-#{i}" do |node|
-      node.vm.box = "ubuntu/focal64"
+  # (1..2).each do |i|
+  #   config.vm.define "worker-#{i}" do |node|
+  #     node.vm.box = "ubuntu/focal64"
 
-      hostname = "azkaban-worker-%02d" % i
-      node_ip = "192.168.57.%d" % (10 + i)
+  #     hostname = "azkaban-worker-%02d" % i
+  #     node_ip = "192.168.57.%d" % (10 + i)
 
-      node.vm.provider "virtualbox" do |vb|
-        vb.memory = "1024"
-        vb.name = "v-#{hostname}"
-      end
-      node.vm.hostname = hostname
-      node.vm.network "private_network", ip: node_ip, name: "vboxnet1"
+  #     node.vm.provider "virtualbox" do |vb|
+  #       vb.memory = "1024"
+  #       vb.name = "v-#{hostname}"
+  #     end
+  #     node.vm.hostname = hostname
+  #     node.vm.network "private_network", ip: node_ip, name: "vboxnet1"
 
-      node.vm.provision "shell", path: "install.sh", args: ["install_k8s"]
-      node.vm.provision "shell", path: "install.sh",
-                        args: ["join_worker", $cp_ip, $cp_hostname, node_ip, $bootstrap_token, $discovery_ca_hash]
-    end
-  end
+  #     node.vm.provision "shell", path: "install.sh", args: ["install_k8s"]
+  #     node.vm.provision "shell", path: "install.sh",
+  #                       args: ["join_worker", $cp_ip, $cp_hostname, node_ip, $bootstrap_token, $discovery_ca_hash]
+  #   end
+  # end
 
   config.vm.define "cp", primary: true do |node|
 
